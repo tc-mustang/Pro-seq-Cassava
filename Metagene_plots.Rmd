@@ -1,0 +1,573 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+```{r}
+
+source("http://bioconductor.org/biocLite.R")
+biocLite("metagene")
+
+library(metagene)
+```
+
+Load BAM files paths
+
+```{r}
+
+bam_files <- c("/home/NVME/Pro-seq/Second/Mapping/white_forward.bam", "/home/NVME/Pro-seq/Second/Mapping/white_reverse.bam")
+
+bam_files
+names(bam_files) <- c("Forward", "Reverse") 
+
+```
+
+
+Load coordinates
+
+```{r}
+
+regions <- get_demo_regions()
+regions <- c("/home/NVME/Pro-seq/Second/Metagene/Chr1_positive.bed", "/home/NVME/Pro-seq/Second/Metagene/Chr1_negative.bed")
+
+regions
+
+```
+
+Make the design matrix
+
+```{r}
+
+design <- data.frame(Samples = c(bam_files[1], bam_files[2]),
+                     align1 = c(1,2))
+
+design$Samples <- paste0(system.file("extdata", package="metagene"), "/",
+                         design$Samples)
+
+design
+```
+
+PLOTTING THE things
+
+```{r}
+
+#Initialize
+mg <- metagene$new(regions = regions, bam_files = bam_files)
+
+# Plotting
+mg$plot(title = "Demo metagene plot")
+
+
+a<- mg$produce_matrices()
+a$get_matrices()
+
+
+
+
+df <- mg$get_data_frame()
+
+df [1:5, 1:5]
+```
+
+
+
+PLOT
+
+```{r}
+
+
+library(ggthemes)
+library(extrafont)
+library(ggplot2)
+
+
+metagene            <- read.delim(file = "/home/NVME/Pro-seq/Second/Metagene/metagene.txt")
+colnames(metagene)  <- c("axis", "coverage", "Pro (+)", "Pro (-)")
+
+dim(metagene)
+metageneplot <- matrix(0, ncol = 3 , nrow = dim(metagene)[1]*2)
+metageneplot <- as.data.frame(metageneplot)
+colnames(metageneplot)    <- c("Distance from TSS (5'end)","Normalized reads", "Strand")
+
+reads    <- c(metagene$`Pro (+)`, metagene$`Pro (-)`)
+distance <- c(metagene$axis, metagene$axis) 
+strand   <- c(rep(x = "Pro(+)", dim(metagene)[1]), rep(x = "Pro(-)", dim(metagene)[1]))
+
+metageneplot[,1] <- as.integer(distance) * -1 
+metageneplot[,2] <- as.numeric(reads)
+metageneplot[,3] <- strand
+
+
+
+
+p1 <- ggplot() + geom_line(aes(y = `Normalized reads`, x =  `Distance from TSS (5'end)`, colour = Strand), size=1.3,
+                           data = metageneplot, stat="identity") +
+  theme(legend.position="bottom", legend.direction="horizontal",
+        legend.title = element_blank()) +
+  #scale_x_continuous(breaks=seq(2006,2014,1)) +
+  #labs(x="Year", y="USD million") +
+  ggtitle("Metagene Plot Cassava Pro-seq read") +
+  scale_color_manual(values=fill) +
+  theme(axis.line.x = element_line(size=1, colour = "black"),
+        axis.line.y = element_line(size=1, colour = "black"),
+        panel.grid.major = element_line(colour = "#d3d3d3"), panel.grid.minor = element_blank(),
+        panel.border = element_blank(), panel.background = element_blank()) +
+  theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+        text=element_text(family="Tahoma"),
+        axis.text.x=element_text(colour="black", size = 10),
+        axis.text.y=element_text(colour="black", size = 10),
+        legend.key=element_rect(fill="white", colour="white"))
+
+p1
+
+```
+
+
+
+
+
+```{r}
+
+
+metagene            <- read.delim(file = "/home/NVME/Pro-seq/Second/Metagene/metagene_long__TTS.txt")
+colnames(metagene)  <- c("axis", "coverage", "Pro (+)", "Pro (-)")
+
+dim(metagene)
+metageneplot <- matrix(0, ncol = 3 , nrow = dim(metagene)[1]*2)
+metageneplot <- as.data.frame(metageneplot)
+colnames(metageneplot)    <- c("Distance from TSS (5'end)","Normalized reads", "Strand")
+
+reads    <- c(metagene$`Pro (+)`, metagene$`Pro (-)`)
+distance <- c(metagene$axis, metagene$axis) 
+strand   <- c(rep(x = "Pro(+)", dim(metagene)[1]), rep(x = "Pro(-)", dim(metagene)[1]))
+
+metageneplot[,1] <- as.integer(distance) * -1 
+metageneplot[,2] <- as.numeric(reads)
+metageneplot[,3] <- strand
+
+delete        <- which(metageneplot[,1] < -1500)
+metageneplot  <- metageneplot[-delete,]
+
+
+p5 <- ggplot() + geom_line(aes(y = `Normalized reads`, x =  `Distance from TSS (5'end)`, colour = Strand), size=1.3,
+                           data = metageneplot, stat="identity") +
+  theme(legend.position="bottom", legend.direction="horizontal",
+        legend.title = element_blank()) +
+  #scale_x_continuous(breaks=seq(2006,2014,1)) +
+  labs(x="Distance from TTS (5'end)") +
+  ggtitle("Metagene Plot Cassava Pro-seq read") +
+  scale_color_manual(values=fill) +
+  theme(axis.line.x = element_line(size=1, colour = "black"),
+        axis.line.y = element_line(size=1, colour = "black"),
+        panel.grid.major = element_line(colour = "#d3d3d3"), panel.grid.minor = element_blank(),
+        panel.border = element_blank(), panel.background = element_blank()) +
+  theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+        text=element_text(family="Tahoma"),
+        axis.text.x=element_text(colour="black", size = 10),
+        axis.text.y=element_text(colour="black", size = 10),
+        legend.key=element_rect(fill="white", colour="white"))
+
+p5
+
+```
+
+```{r}
+
+p3 <- ggplot() + geom_line(aes(y = `Normalized reads`, x =  `Distance from TSS (5'end)`, colour = Strand), size=1.3,
+                           data = metageneplot, stat="identity") +
+  theme(legend.position="bottom", legend.direction="horizontal",
+        legend.title = element_blank()) +
+  #scale_x_continuous(breaks=seq(2006,2014,1)) +
+  labs(x="Distance from TTS (3'end)") +
+  ylim(0, 0.155) +
+  ggtitle("Metagene Plot Cassava Pro-seq read") +
+  scale_color_manual(values=fill) +
+  theme(axis.line.x = element_line(size=1, colour = "black"),
+        axis.line.y = element_line(size=1, colour = "black"),
+        panel.grid.major = element_line(colour = "#d3d3d3"), panel.grid.minor = element_blank(),
+        panel.border = element_blank(), panel.background = element_blank()) +
+  theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+        text=element_text(family="Tahoma"),
+        axis.text.x=element_text(colour="black", size = 10),
+        axis.text.y=element_text(colour="black", size = 10),
+        legend.key=element_rect(fill="white", colour="white"))
+
+p3
+
+
+```
+
+# PLOTS READY
+
+## WHITE
+
+### TSS
+
+```{r}
+
+
+library(ggthemes)
+library(extrafont)
+library(ggplot2)
+library(wesanderson)
+library(tidyr)
+library(magrittr)
+library(dplyr)
+
+metagene            <- read.delim(file = "/home/NVME/Pro-seq/Second/Metagene/white/metagene_white_TSS.txt")
+colnames(metagene)  <- c("axis", "coverage", "Pro (+)", "Pro (-)")
+
+dim(metagene)
+metageneplot <- matrix(0, ncol = 3 , nrow = dim(metagene)[1]*2)
+metageneplot <- as.data.frame(metageneplot)
+colnames(metageneplot)    <- c("Distance from TSS (5'end)","Normalized reads", "Strand")
+
+reads    <- c(metagene$`Pro (+)`, metagene$`Pro (-)`)
+distance <- c(metagene$axis, metagene$axis) 
+strand   <- c(rep(x = "Pro(+)", dim(metagene)[1]), rep(x = "Pro(-)", dim(metagene)[1]))
+
+metageneplot[,1] <- as.integer(distance) * -1 
+metageneplot[,2] <- as.numeric(reads)
+metageneplot[,3] <- strand
+
+color <- wes_palette("Cavalcanti1")
+fill <- c(color[1], color[2])
+
+p1 <- ggplot() + geom_line(aes(y = `Normalized reads`, x =  `Distance from TSS (5'end)`, colour = Strand), size=1.3,
+                           data = metageneplot, stat="identity") +
+  theme(legend.position="bottom", legend.direction="horizontal",
+        legend.title = element_blank()) +
+  #scale_x_continuous(breaks=seq(2006,2014,1)) +
+  #labs(x="Year", y="USD million") +
+  ylim(0, 0.20)+
+  ggtitle("Metagene Plot Cassava Pro-seq read") +
+  scale_color_manual(values=fill) +
+  theme(axis.line.x = element_line(size=1, colour = "black"),
+        axis.line.y = element_line(size=1, colour = "black"),
+        panel.grid.major = element_line(colour = "#d3d3d3"), panel.grid.minor = element_blank(),
+        panel.border = element_blank(), panel.background = element_blank()) +
+  theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+        text=element_text(family="Tahoma"),
+        axis.text.x=element_text(colour="black", size = 10),
+        axis.text.y=element_text(colour="black", size = 10),
+        legend.key=element_rect(fill="white", colour="white"))
+
+p1
+
+```
+
+### TTS
+
+```{r}
+
+metagene            <- read.delim(file = "/home/NVME/Pro-seq/Second/Metagene/white/metagene_white_TTS.txt")
+colnames(metagene)  <- c("axis", "coverage", "Pro (+)", "Pro (-)")
+
+dim(metagene)
+metageneplot <- matrix(0, ncol = 3 , nrow = dim(metagene)[1]*2)
+metageneplot <- as.data.frame(metageneplot)
+colnames(metageneplot)    <- c("Distance from TSS (5'end)","Normalized reads", "Strand")
+
+reads    <- c(metagene$`Pro (+)`, metagene$`Pro (-)`)
+distance <- c(metagene$axis, metagene$axis) 
+strand   <- c(rep(x = "Pro(+)", dim(metagene)[1]), rep(x = "Pro(-)", dim(metagene)[1]))
+
+metageneplot[,1] <- as.integer(distance) * -1 
+metageneplot[,2] <- as.numeric(reads)
+metageneplot[,3] <- strand
+
+metageneplot <- metageneplot %>%
+  filter(`Distance from TSS (5'end)` > -1500)
+
+color <- wes_palette("Cavalcanti1")
+fill <- c(color[1], color[2])
+
+p1 <- ggplot() + geom_line(aes(y = `Normalized reads`, x =  `Distance from TSS (5'end)`, colour = Strand), size=1.3,
+                           data = metageneplot, stat="identity") +
+  theme(legend.position="bottom", legend.direction="horizontal",
+        legend.title = element_blank()) +
+  #scale_x_continuous(breaks=seq(2006,2014,1)) +
+  #labs(x="Year", y="USD million") +
+  labs(x="Distance from TTS (3'end)") +
+  ylim(0, 0.20)+
+  ggtitle("Metagene Plot Cassava Pro-seq read") +
+  scale_color_manual(values=fill) +
+  theme(axis.line.x = element_line(size=1, colour = "black"),
+        axis.line.y = element_line(size=1, colour = "black"),
+        panel.grid.major = element_line(colour = "#d3d3d3"), panel.grid.minor = element_blank(),
+        panel.border = element_blank(), panel.background = element_blank()) +
+  theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+        text=element_text(family="Tahoma"),
+        axis.text.x=element_text(colour="black", size = 10),
+        axis.text.y=element_text(colour="black", size = 10),
+        legend.key=element_rect(fill="white", colour="white"))
+
+p1
+
+```
+
+## OLD
+
+###TSS
+
+```{r}
+
+metagene            <- read.delim(file = "/home/NVME/Pro-seq/Second/Metagene/old/metagene_old_TSS.txt")
+colnames(metagene)  <- c("axis", "coverage", "Pro (+)", "Pro (-)")
+
+dim(metagene)
+metageneplot <- matrix(0, ncol = 3 , nrow = dim(metagene)[1]*2)
+metageneplot <- as.data.frame(metageneplot)
+colnames(metageneplot)    <- c("Distance from TSS (5'end)","Normalized reads", "Strand")
+
+reads    <- c(metagene$`Pro (+)`, metagene$`Pro (-)`)
+distance <- c(metagene$axis, metagene$axis) 
+strand   <- c(rep(x = "Pro(+)", dim(metagene)[1]), rep(x = "Pro(-)", dim(metagene)[1]))
+
+metageneplot[,1] <- as.integer(distance) * -1 
+metageneplot[,2] <- as.numeric(reads)
+metageneplot[,3] <- strand
+
+#metageneplot <- metageneplot %>%
+#  filter(`Distance from TSS (5'end)` > -1500)
+
+color <- wes_palette("Cavalcanti1")
+fill <- c(color[1], color[2])
+
+p1 <- ggplot() + geom_line(aes(y = `Normalized reads`, x =  `Distance from TSS (5'end)`, colour = Strand), size=1.3,
+                           data = metageneplot, stat="identity") +
+  theme(legend.position="bottom", legend.direction="horizontal",
+        legend.title = element_blank()) +
+  #scale_x_continuous(breaks=seq(2006,2014,1)) +
+  #labs(x="Year", y="USD million") +
+  
+  ylim(0, 0.20)+
+  ggtitle("Metagene Plot Cassava Pro-seq read") +
+  scale_color_manual(values=fill) +
+  theme(axis.line.x = element_line(size=1, colour = "black"),
+        axis.line.y = element_line(size=1, colour = "black"),
+        panel.grid.major = element_line(colour = "#d3d3d3"), panel.grid.minor = element_blank(),
+        panel.border = element_blank(), panel.background = element_blank()) +
+  theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+        text=element_text(family="Tahoma"),
+        axis.text.x=element_text(colour="black", size = 10),
+        axis.text.y=element_text(colour="black", size = 10),
+        legend.key=element_rect(fill="white", colour="white"))
+
+p1
+
+```
+
+
+###TTS
+
+```{r}
+
+metagene            <- read.delim(file = "/home/NVME/Pro-seq/Second/Metagene/old/metagene_old_TTS.txt")
+colnames(metagene)  <- c("axis", "coverage", "Pro (+)", "Pro (-)")
+
+dim(metagene)
+metageneplot <- matrix(0, ncol = 3 , nrow = dim(metagene)[1]*2)
+metageneplot <- as.data.frame(metageneplot)
+colnames(metageneplot)    <- c("Distance from TSS (5'end)","Normalized reads", "Strand")
+
+reads    <- c(metagene$`Pro (+)`, metagene$`Pro (-)`)
+distance <- c(metagene$axis, metagene$axis) 
+strand   <- c(rep(x = "Pro(+)", dim(metagene)[1]), rep(x = "Pro(-)", dim(metagene)[1]))
+
+metageneplot[,1] <- as.integer(distance) * -1 
+metageneplot[,2] <- as.numeric(reads)
+metageneplot[,3] <- strand
+
+metageneplot <- metageneplot %>%
+  filter(`Distance from TSS (5'end)` > -1500)
+
+color <- wes_palette("Cavalcanti1")
+fill <- c(color[1], color[2])
+
+p1 <- ggplot() + geom_line(aes(y = `Normalized reads`, x =  `Distance from TSS (5'end)`, colour = Strand), size=1.3,
+                           data = metageneplot, stat="identity") +
+  theme(legend.position="bottom", legend.direction="horizontal",
+        legend.title = element_blank()) +
+  #scale_x_continuous(breaks=seq(2006,2014,1)) +
+  #labs(x="Year", y="USD million") +
+  labs(x="Distance from TTS (3'end)") +
+  ylim(0, 0.20)+
+  ggtitle("Metagene Plot Cassava Pro-seq read") +
+  scale_color_manual(values=fill) +
+  theme(axis.line.x = element_line(size=1, colour = "black"),
+        axis.line.y = element_line(size=1, colour = "black"),
+        panel.grid.major = element_line(colour = "#d3d3d3"), panel.grid.minor = element_blank(),
+        panel.border = element_blank(), panel.background = element_blank()) +
+  theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+        text=element_text(family="Tahoma"),
+        axis.text.x=element_text(colour="black", size = 10),
+        axis.text.y=element_text(colour="black", size = 10),
+        legend.key=element_rect(fill="white", colour="white"))
+
+p1
+
+```
+
+##WHITE INTERGENIC
+
+
+###Intergenic
+
+```{r}
+
+metagene            <- read.delim(file = "/home/NVME/Pro-seq/Second/Metagene/white/metagene_intergenic.txt")
+colnames(metagene)  <- c("axis", "coverage", "Pro (+)", "Pro (-)")
+
+dim(metagene)
+metageneplot <- matrix(0, ncol = 3 , nrow = dim(metagene)[1]*2)
+metageneplot <- as.data.frame(metageneplot)
+colnames(metageneplot)    <- c("Distance from TSS (5'end)","Normalized reads", "Strand")
+
+reads    <- c(metagene$`Pro (+)`, metagene$`Pro (-)`)
+distance <- c(metagene$axis, metagene$axis) 
+strand   <- c(rep(x = "Pro(+)", dim(metagene)[1]), rep(x = "Pro(-)", dim(metagene)[1]))
+
+metageneplot[,1] <- as.integer(distance) * -1 
+metageneplot[,2] <- as.numeric(reads)
+metageneplot[,3] <- strand
+
+#metageneplot <- metageneplot %>%
+#  filter(`Distance from TSS (5'end)` > -1500)
+
+color <- wes_palette("FantasticFox1")
+fill <- c(color[3], color[4])
+
+p1 <- ggplot() + geom_line(aes(y = `Normalized reads`, x =  `Distance from TSS (5'end)`, colour = Strand), size=1.3,
+                           data = metageneplot, stat="identity") +
+  theme(legend.position="bottom", legend.direction="horizontal",
+        legend.title = element_blank()) +
+  #scale_x_continuous(breaks=seq(2006,2014,1)) +
+  #labs(x="Year", y="USD million") +
+#  ylim(0, 0.20)+
+  labs(x="Distance from Intergenic Peak") +
+  ggtitle("Metagene Plot Cassava Pro-seq read") +
+  scale_color_manual(values=fill) +
+  theme(axis.line.x = element_line(size=1, colour = "black"),
+        axis.line.y = element_line(size=1, colour = "black"),
+        panel.grid.major = element_line(colour = "#d3d3d3"), panel.grid.minor = element_blank(),
+        panel.border = element_blank(), panel.background = element_blank()) +
+  theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+        text=element_text(family="Tahoma"),
+        axis.text.x=element_text(colour="black", size = 10),
+        axis.text.y=element_text(colour="black", size = 10),
+        legend.key=element_rect(fill="white", colour="white"))
+
+p1
+
+```
+
+
+###Intergenic ALL
+
+```{r}
+
+metagene            <- read.delim(file = "/home/NVME/Pro-seq/Second/Metagene/white/metagene_intergenic_all.txt")
+colnames(metagene)  <- c("axis", "coverage", "Pro (+)", "Pro (-)")
+
+dim(metagene)
+metageneplot <- matrix(0, ncol = 3 , nrow = dim(metagene)[1]*2)
+metageneplot <- as.data.frame(metageneplot)
+colnames(metageneplot)    <- c("Distance from TSS (5'end)","Normalized reads", "Strand")
+
+reads    <- c(metagene$`Pro (+)`, metagene$`Pro (-)`)
+distance <- c(metagene$axis, metagene$axis) 
+strand   <- c(rep(x = "Pro(+)", dim(metagene)[1]), rep(x = "Pro(-)", dim(metagene)[1]))
+
+metageneplot[,1] <- as.integer(distance) * -1 
+metageneplot[,2] <- as.numeric(reads)
+metageneplot[,3] <- strand
+
+#metageneplot <- metageneplot %>%
+#  filter(`Distance from TSS (5'end)` > -1500)
+
+color <- wes_palette("FantasticFox1")
+fill <- c(color[3], color[4])
+
+p1 <- ggplot() + geom_line(aes(y = `Normalized reads`, x =  `Distance from TSS (5'end)`, colour = Strand), size=1.3,
+                           data = metageneplot, stat="identity") +
+  theme(legend.position="bottom", legend.direction="horizontal",
+        legend.title = element_blank()) +
+  #scale_x_continuous(breaks=seq(2006,2014,1)) +
+  #labs(x="Year", y="USD million") +
+#  ylim(0, 0.20)+
+  labs(x="Distance from Intergenic Peak") +
+  ggtitle("Metagene Plot Cassava Pro-seq read") +
+  scale_color_manual(values=fill) +
+  theme(axis.line.x = element_line(size=1, colour = "black"),
+        axis.line.y = element_line(size=1, colour = "black"),
+        panel.grid.major = element_line(colour = "#d3d3d3"), panel.grid.minor = element_blank(),
+        panel.border = element_blank(), panel.background = element_blank()) +
+  theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+        text=element_text(family="Tahoma"),
+        axis.text.x=element_text(colour="black", size = 10),
+        axis.text.y=element_text(colour="black", size = 10),
+        legend.key=element_rect(fill="white", colour="white"))
+
+p1
+
+```
+
+
+## Chloroplast
+
+```{r}
+
+metagene            <- read.delim(file = "/home/NVME/Pro-seq/Second/Metagene/Chloroplast/chloroplast_white_TSS.txt")
+colnames(metagene)  <- c("axis", "coverage", "Pro (+)", "Pro (-)")
+
+dim(metagene)
+metageneplot <- matrix(0, ncol = 3 , nrow = dim(metagene)[1]*2)
+metageneplot <- as.data.frame(metageneplot)
+colnames(metageneplot)    <- c("Distance from TSS (5'end)","Normalized reads", "Strand")
+
+reads    <- c(metagene$`Pro (+)`, metagene$`Pro (-)`)
+distance <- c(metagene$axis, metagene$axis) 
+strand   <- c(rep(x = "Pro(+)", dim(metagene)[1]), rep(x = "Pro(-)", dim(metagene)[1]))
+
+metageneplot[,1] <- as.integer(distance) * -1 
+metageneplot[,2] <- as.numeric(reads)
+metageneplot[,3] <- strand
+
+#metageneplot <- metageneplot %>%
+#  filter(`Distance from TSS (5'end)` > -1500)
+
+color <- wes_palette("FantasticFox1")
+fill <- c(color[3], color[4])
+
+p1 <- ggplot() + geom_line(aes(y = `Normalized reads`, x =  `Distance from TSS (5'end)`, colour = Strand), size=1.3,
+                           data = metageneplot, stat="identity") +
+  theme(legend.position="bottom", legend.direction="horizontal",
+        legend.title = element_blank()) +
+  #scale_x_continuous(breaks=seq(2006,2014,1)) +
+  #labs(x="Year", y="USD million") +
+#  ylim(0, 0.20)+
+  labs(x="Distance 5' extreme") +
+  ggtitle("Metagene Plot Cassava Pro-seq read") +
+  scale_color_manual(values=fill) +
+  theme(axis.line.x = element_line(size=1, colour = "black"),
+        axis.line.y = element_line(size=1, colour = "black"),
+        panel.grid.major = element_line(colour = "#d3d3d3"), panel.grid.minor = element_blank(),
+        panel.border = element_blank(), panel.background = element_blank()) +
+  theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+        text=element_text(family="Tahoma"),
+        axis.text.x=element_text(colour="black", size = 10),
+        axis.text.y=element_text(colour="black", size = 10),
+        legend.key=element_rect(fill="white", colour="white"))
+
+p1
+
+```
+
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
