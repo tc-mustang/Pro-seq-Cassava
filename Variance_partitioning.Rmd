@@ -1,0 +1,176 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Read the phenotypes
+
+```{r}
+
+phenos <- read.delim(file = "/home/NVME/Pro-seq/Quantitative/Predictions/phenos/Phenos.GGC1",sep = "\t", header = TRUE )
+
+clones <- phenos$namescross
+
+#Xclones <- gsub("2013_", "X2013_", clones, perl=TRUE)
+
+phenos$CLONE <- clones
+
+
+phenos$CLONE[37015:37026]
+save(phenos, file = "/home/NVME/Pro-seq/Quantitative/Predictions/GRMs/LDAK/kinshipsR/0.25/phenos.Rdata")
+
+
+```
+
+Load the relationship matrices
+
+```{r}
+
+ids <- read.delim(file = "/home/NVME/Pro-seq/Quantitative/Predictions/GRMs/LDAK/kinships/IDs", header = F, stringsAsFactors = F)
+ids <- ids[,1]
+
+I.grm <- read.delim(file = "/home/NVME/Pro-seq/Quantitative/Predictions/GRMs/LDAK/kinships/kinships.1.grm.raw", header = F, sep = " ")
+I.grm <- I.grm[,-3012]
+rownames(I.grm) <- ids  
+colnames(I.grm) <- ids
+
+II.grm <- read.delim(file = "/home/NVME/Pro-seq/Quantitative/Predictions/GRMs/LDAK/kinships/kinships.2.grm.raw", header = F, sep = " ")
+II.grm <- II.grm[,-3012]
+rownames(II.grm) <- ids  
+colnames(II.grm) <- ids
+
+III.grm <- read.delim(file = "/home/NVME/Pro-seq/Quantitative/Predictions/GRMs/LDAK/kinships/kinships.3.grm.raw", header = F, sep = " ")
+III.grm <- III.grm[,-3012]
+rownames(III.grm) <- ids  
+colnames(III.grm) <- ids
+
+IV.grm <- read.delim(file = "/home/NVME/Pro-seq/Quantitative/Predictions/GRMs/LDAK/kinships/kinships.4.grm.raw", header = F, sep = " ")
+IV.grm <- IV.grm[,-3012]
+rownames(IV.grm) <- ids  
+colnames(IV.grm) <- ids
+
+V.grm <- read.delim(file = "/home/NVME/Pro-seq/Quantitative/Predictions/GRMs/LDAK/kinships/kinships.5.grm.raw", header = F, sep = " ")
+V.grm <- V.grm[,-3012]
+rownames(V.grm) <- ids  
+colnames(V.grm) <- ids
+
+VI.grm <- read.delim(file = "/home/NVME/Pro-seq/Quantitative/Predictions/GRMs/LDAK/kinships/kinships.6.grm.raw", header = F, sep = " ")
+VI.grm <- VI.grm[,-3012]
+rownames(VI.grm) <- ids  
+colnames(VI.grm) <- ids
+
+VII.grm <- read.delim(file = "/home/NVME/Pro-seq/Quantitative/Predictions/GRMs/LDAK/kinships/kinships.7.grm.raw", header = F, sep = " ")
+VII.grm <- VII.grm[,-3012]
+rownames(VII.grm) <- ids  
+colnames(VII.grm) <- ids
+ 
+save(I.grm, file = "/home/NVME/Pro-seq/Quantitative/Predictions/GRMs/LDAK/kinshipsR/0.25/I.grm.Rdata")
+save(II.grm, file = "/home/NVME/Pro-seq/Quantitative/Predictions/GRMs/LDAK/kinshipsR/0.25/II.grm.Rdata")
+save(III.grm, file = "/home/NVME/Pro-seq/Quantitative/Predictions/GRMs/LDAK/kinshipsR/0.25/III.grm.Rdata")
+save(IV.grm, file = "/home/NVME/Pro-seq/Quantitative/Predictions/GRMs/LDAK/kinshipsR/0.25/IV.grm.Rdata")
+save(V.grm, file = "/home/NVME/Pro-seq/Quantitative/Predictions/GRMs/LDAK/kinshipsR/0.25/V.grm.Rdata")
+save(VI.grm, file = "/home/NVME/Pro-seq/Quantitative/Predictions/GRMs/LDAK/kinshipsR/0.25/VI.grm.Rdata")
+save(VII.grm, file = "/home/NVME/Pro-seq/Quantitative/Predictions/GRMs/LDAK/kinshipsR/0.25/VII.grm.Rdata")
+
+
+
+```
+
+
+
+```{r}
+
+
+K <- III.grm
+
+library(foreach)
+library(doParallel)
+
+traits <- c("logFYLD", "logRTNO")
+
+Train_GG_GBLUP <- foreach(a=traits, pizza=icount(), .inorder=TRUE) %dopar% { 
+  require(EMMREML); trait=traits[pizza]
+  data1 <- phenos[!is.na(phenos[,trait]),]
+  
+  if(trait %in% c("logRTWT","logRTNO","logFYLD","logSHTWT")){ data1 <- data1[!is.na(data1$NOHAV),] }
+  
+  data1$CLONE          <- factor(as.character(data1$CLONE),levels=rownames(K))
+  data1$LOC.YEAR       <- factor(as.character(data1$LOC.YEAR))
+  data1$LOC.YEAR.RANGE <- factor(paste(data1$LOC.YEAR,data1$TRIAL.NAME,data1$RANGE,sep="."))
+  
+  Zg = model.matrix(~data1$CLONE-1)
+  Zr = model.matrix(~data1$LOC.YEAR.RANGE-1)
+  
+  if(trait %in% c("logRTWT","logRTNO","logFYLD","logSHTWT")){ X = model.matrix(~1+LOC.YEAR + NOHAV,data=data1) } else { X = model.matrix(~1+LOC.YEAR,data=data1) }
+  
+  y = data1[,trait]
+  funout <- emmremlMultiKernel(y=y, X=X, Z=list(Zg,Zr), K=list(K,diag(ncol(Zr))), varuhat=T,PEVuhat=T) }
+proctime<-proc.time() - proctime; proctime; #save(Train_GG_GBLUP,proctime,file="TrainGG_GBLUP_AllInKinship_63016.Rdata")
+
+
+```
+
+
+MULTIPLE GRM
+
+```{r}
+
+library(foreach)
+library(doParallel)
+traits <- c("logRTWT", "logRTNO", "logFYLD", "logSHTWT","DM")
+Klist<- list(I.grm, II.grm, III.grm, IV.grm, V.grm, VI.grm, VII.grm)
+K <- I.grm
+
+Proseq025 <- foreach(a=traits, pizza=icount(), .inorder=TRUE) %dopar% { 
+  require(EMMREML); trait=traits[pizza]
+  data1 <- phenos[!is.na(phenos[,trait]),]
+  if(trait %in% c("logRTWT","logRTNO","logFYLD","logSHTWT")){ data1 <- data1[!is.na(data1$NOHAV),] }
+  
+  data1$CLONE          <- factor(as.character(data1$CLONE),levels=rownames(K))
+  data1$LOC.YEAR       <- factor(as.character(data1$LOC.YEAR))
+  data1$LOC.YEAR.RANGE <- factor(paste(data1$LOC.YEAR,data1$TRIAL.NAME,data1$RANGE,sep="."))
+  
+  Zg = model.matrix(~data1$CLONE-1)
+  Zr = model.matrix(~data1$LOC.YEAR.RANGE-1)
+  
+  Zlist<-list(Zg,Zr,Zg,Zg,Zg,Zg,Zg,Zg)
+  Klist<-list(Klist[[1]],diag(ncol(Zr)),Klist[[2]],Klist[[3]],Klist[[4]],Klist[[5]],Klist[[6]],Klist[[7]])
+  
+  if(trait %in% c("logRTWT","logRTNO","logFYLD","logSHTWT")){ X = model.matrix(~1+LOC.YEAR + NOHAV,data=data1) } else { X = model.matrix(~1+LOC.YEAR,data=data1) }
+  y = data1[,trait]
+  funout <- emmremlMultiKernel(y=y, X=X, Z=Zlist, K=Klist, varuhat=T,PEVuhat=T) }
+proctime<-proc.time() - proctime; proctime; save(Proseq025,proctime,file="/home/rjl278/PRO-seq/Proseq025.Rdata")
+
+
+```
+
+
+
+
+MULTIPLE GRM
+
+```{r}
+
+Train_GG_bio <- foreach(a=traits, pizza=icount(), .inorder=TRUE) %dopar% { 
+  require(EMMREML); trait=traits[pizza]
+  data1 <- phenos[!is.na(phenos[,trait]),]
+  if(trait %in% c("logRTWT","logRTNO","logFYLD","logSHTWT")){ data1 <- data1[!is.na(data1$NOHAV),] }
+  data1$CLONE <- factor(as.character(data1$CLONE),levels=rownames(K))
+  data1$LOC.YEAR <- factor(as.character(data1$LOC.YEAR))
+  data1$LOC.YEAR.RANGE <- factor(paste(data1$LOC.YEAR,data1$TRIAL.NAME,data1$RANGE,sep="."))
+  Zg = model.matrix(~data1$CLONE-1)
+  Zr = model.matrix(~data1$LOC.YEAR.RANGE-1)
+  Zlist<-list(Zg,Zr,Zg,Zg,Zg,Zg,Zg)
+  Klist<-list(Klist[[1]],diag(ncol(Zr)),Klist[[2]],Klist[[3]],Klist[[4]],Klist[[5]],Klist[[6]])
+  if(trait %in% c("logRTWT","logRTNO","logFYLD","logSHTWT")){ X = model.matrix(~1+LOC.YEAR + NOHAV,data=data1) } else { X = model.matrix(~1+LOC.YEAR,data=data1) }
+  y = data1[,trait]
+  funout <- emmremlMultiKernel(y=y, X=X, Z=Zlist, K=Klist, varuhat=T,PEVuhat=T) }
+proctime<-proc.time() - proctime; proctime; save(Train_GG_GBLUP,proctime,file="TrainGG_GBLUP_AllInKinship_63016.Rdata")
+
+
+```
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
