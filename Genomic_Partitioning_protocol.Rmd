@@ -1,0 +1,514 @@
+---
+title: "Calculating SNP heritabilities Protocol"
+output: html_notebook
+---
+
+# WEIGHTINGS using LDAK5
+
+Calculate Weighted relationship Matrices for the regions of interest using LDAK5
+
+```{bash}
+
+## Prepare data to compute weightings
+# listALL is a list of all the markers and GGC1 is the prefix of the genotypic data in plink format
+ldak5 --cut-weights sectionsGP --bfile GGC1 --extract listALL
+
+## Calculate weightings for each section
+# the number of sections is stored in sectionsGP/section.number 
+for j in {1..896}; do ldak5 --calc-weights sectionsGP/ --bfile GGC1 --extract ALLsnps --section $j; done
+
+## Join weightings across sections
+ldak5 --join-weights sectionsGP –extract-index ALLsnps
+
+```
+
+# Calculating GRM for variance component analysis
+
+Here we are gonna calculate the GRM for the intergenic dReg regions that intersect with the Category #2
+
+
+Get the markers for the section we have
+
+### dREG intersection with II
+
+```{bash}
+
+#We are working with fewer markers here so lets extend the regions a little bit
+more dREG_conserved_relax.bed | awk '{print $1"\t"$2-500"\t"$3+500"\t"$4"\t"$5}' > dREG_500.bed
+
+#Intersect the position of the regions with the positions of all available SNPS
+bedtools intersect -a dREG_500.bed -b /home/NVME/Pro-seq/Quantitative/BEDs/I2_LDAK.bed  -wa -wb > dReg500.intersect
+
+#Get uniq markers intersecting with my segments
+awk '{print$9}' dReg500.intersect | sort -n | uniq > dReg500.snps 
+
+#Formatting the bed file for LDAK purposes
+more dREG_500.bed | awk '{print"S"$1"_"$2, $1, $2, $3}' | sed 's/ /\t/g' > dREG_500.ldak
+
+```
+
+### Calculate GRMS 
+
+```{bash}
+
+#To calculate enrichment of DHS, first compute kinships from DHS SNPs, then its complement (i.e., subtract from genome-wide kinships), then perform two-way REML
+ldak5 --cut-genes DREG --bfile GGC1 --genefile /home/NVME/Pro-seq/Quantitative/dREG/dREG_500.ldak--ignore-weights YES
+ldak5 --calc-kins-direct DREG --bfile data --extract DREG/genes.predictors.used --weights sectionsGP/weights.all --power -0.25 --kinship-raw YES
+
+
+echo -e "/home/NVME/Pro-seq/Quantitative/Predictions/GRMs/LDAK_old/kinshipall/kinships.all./DREG\n" > listsub
+ldak5 --sub-grm not_DREG --mgrm listsub --kinship-raw YES
+
+
+```
+
+### GENOMIC PREDICTION CODE
+
+
+Read the phenotypes
+
+```{r}
+
+phenos <- read.delim(file = "/home/NVME/Pro-seq/Quantitative/Predictions/phenos/Phenos.GGC1",sep = "\t", header = TRUE )
+clones <- phenos$namescross
+
+#Xclones <- gsub("2013_", "X2013_", clones, perl=TRUE)
+
+phenos$CLONE <- clones
+
+
+phenos$CLONE[37015:37026]
+save(phenos, file = "/home/NVME/Pro-seq/Quantitative/Predictions/GRMs/LDAK/phenos.Rdata")
+
+```
+
+Load the relationship matrices
+
+```{r}
+
+ids <- read.delim(file = "/home/NVME/Pro-seq/Quantitative/Predictions/GRMs/LDAK_old/kinships/IDs", header = F, stringsAsFactors = F)
+ids <- ids[,1]
+
+DREG.grm <- read.delim(file = "/home/NVME/Pro-seq/Quantitative/Predictions/GRMs/LDAK/DREG.grm.raw", header = F, sep = " ")
+DREG.grm <- DREG.grm[,-3012]
+rownames(DREG.grm) <- ids  
+colnames(DREG.grm) <- ids
+DREG.grm <- as.matrix(DREG.grm)
+
+EE.grm <- read.delim(file = "/home/NVME/Pro-seq/Quantitative/Predictions/GRMs/LDAK/not_DREG.grm.raw", header = F, sep = " ")
+EE.grm <- EE.grm[,-3012]
+rownames(EE.grm) <- ids  
+colnames(EE.grm) <- ids
+EE.grm <- as.matrix(EE.grm)
+
+ids <- read.delim(file = "/home/NVME/Pro-seq/Quantitative/Predictions/LDAK/kinships/kinships.all.grm.id", sep = " ", header = F, stringsAsFactors = F)
+ids <- ids[,1]
+
+I2_LDAK.grm <- read.delim(file = "/home/NVME/Pro-seq/Quantitative/Predictions/LDAK/kinships/kinships.all.grm.raw", header = F, sep = " ")
+I2_LDAK.grm <- I2_LDAK.grm[,-3012]
+rownames(I2_LDAK.grm) <- ids  
+colnames(I2_LDAK.grm) <- ids
+I2_LDAK.grm <- as.matrix(I2_LDAK.grm)
+
+
+save(DREG.grm, file = "/home/NVME/Pro-seq/Quantitative/Predictions/GRMs/LDAK/DREG/DREG.grm")
+save(EE.grm, file = "/home/NVME/Pro-seq/Quantitative/Predictions/GRMs/LDAK/DREG/EE.grm")
+save(I2_LDAK.grm, file = "/home/NVME/Pro-seq/Quantitative/Predictions/LDAK/kinships/I2_LDAK.grm")
+
+DREG.grm[1:5,1:5]
+I2_LDAK.grm[1:5,1:5]
+
+```
+
+Run this in the CBSU
+
+```{r}
+
+library(foreach)
+library(doParallel)
+
+load("/home/NVME/Pro-seq/Quantitative/Predictions/GRMs/LDAK/DREG/DREG.grm")
+load("/home/NVME/Pro-seq/Quantitative/Predictions/GRMs/LDAK/DREG/EE.grm")
+load("/home/NVME/Pro-seq/Quantitative/Predictions/GRMs/LDAK/phenos.Rdata")
+
+traits <- c("logRTWT", "DM")
+
+K <- DREG.grm
+individuals<-rownames(K)
+sampleinds<-sample(individuals,400)
+
+K<-K[rownames(K)%in%sampleinds,colnames(K)%in%sampleinds]
+
+Klist<- list(DREG.grm[rownames(DREG.grm)%in%sampleinds,colnames(DREG.grm)%in%sampleinds], EE.grm[rownames(EE.grm)%in%sampleinds,colnames(EE.grm)%in%sampleinds])
+
+pizza=2
+ProseqDREG <- foreach(a=traits, pizza=icount(), .inorder=TRUE) %dopar% { 
+  require(EMMREML); trait=traits[pizza]
+  data1 <- phenos[!is.na(phenos[,trait]),]
+  if(trait %in% c("logRTWT","logRTNO","logFYLD","logSHTWT")){ data1 <- data1[!is.na(data1$NOHAV),] }
+  data1<-data1[data1$CLONE%in%sampleinds,]
+  data1$CLONE          <- factor(as.character(data1$CLONE),levels=rownames(K))
+  data1$LOC.YEAR       <- factor(as.character(data1$LOC.YEAR))
+  data1$LOC.YEAR.RANGE <- factor(paste(data1$LOC.YEAR,data1$TRIAL.NAME,data1$RANGE,sep="."))
+  
+  Zg = model.matrix(~data1$CLONE-1)
+  Zr = model.matrix(~data1$LOC.YEAR.RANGE-1)
+  
+  Zlist<-list(Zg,Zr,Zg)
+  Klist<-list(Klist[[1]],diag(ncol(Zr)),Klist[[2]])
+  
+  if(trait %in% c("logRTWT","logRTNO","logFYLD","logSHTWT")){ X = model.matrix(~1+LOC.YEAR + NOHAV,data=data1) } else { X = model.matrix(~1+LOC.YEAR,data=data1) }
+  y = data1[,trait]
+  funout <- emmremlMultiKernel(y=y, X=X, Z=Zlist, K=Klist, varuhat=F,PEVuhat=F) }
+proctime <- proc.time() - proctime; proctime; save(ProseqDREG,proctime,file="/home/rjl278/PRO-seq/ProseqDREG.Rdata")
+
+
+```
+```{r}
+
+library(foreach)
+library(doParallel)
+
+load("/workdir/rjl278/DREG/DREG.grm")
+load("/workdir/rjl278/DREG/EE.grm")
+load("/workdir/rjl278/DREG/phenos.Rdata")
+
+traits <- c("logRTWT", "logRTNO", "logFYLD", "logSHTWT","DM")
+Klist<- list(DREG.grm, EE.grm)
+K <- DREG.grm
+
+ProseqDREG <- foreach(a=traits, pizza=icount(), .inorder=TRUE) %dopar% { 
+  require(EMMREML); trait=traits[pizza]
+  data1 <- phenos[!is.na(phenos[,trait]),]
+  if(trait %in% c("logRTWT","logRTNO","logFYLD","logSHTWT")){ data1 <- data1[!is.na(data1$NOHAV),] }
+  
+  data1$CLONE          <- factor(as.character(data1$CLONE),levels=rownames(K))
+  data1$LOC.YEAR       <- factor(as.character(data1$LOC.YEAR))
+  data1$LOC.YEAR.RANGE <- factor(paste(data1$LOC.YEAR,data1$TRIAL.NAME,data1$RANGE,sep="."))
+  
+  Zg = model.matrix(~data1$CLONE-1)
+  Zr = model.matrix(~data1$LOC.YEAR.RANGE-1)
+  
+  Zlist<-list(Zg,Zr,Zg)
+  Klist<-list(Klist[[1]],diag(ncol(Zr)),Klist[[2]])
+  
+  if(trait %in% c("logRTWT","logRTNO","logFYLD","logSHTWT")){ X = model.matrix(~1+LOC.YEAR + NOHAV,data=data1) } else { X = model.matrix(~1+LOC.YEAR,data=data1) }
+  y = data1[,trait]
+  funout <- emmremlMultiKernel(y=y, X=X, Z=Zlist, K=Klist, varuhat=F,PEVuhat=F) }
+proctime <- proc.time() - proctime; proctime; save(ProseqDREG,proctime,file="/home/rjl278/PRO-seq/ProseqDREG.Rdata")
+
+
+```
+
+
+```{r}
+
+library(foreach)
+library(doParallel)
+
+load("I2_LDAK.grm")
+load("phenos.Rdata")
+
+traits <- c("logFYLD", "DM")
+K      <- I2_LDAK.grm
+
+onekernel <- foreach(a=traits, pizza=icount(), .inorder=TRUE) %dopar% { 
+  require(EMMREML); trait=traits[pizza]
+  data1 <- phenos[!is.na(phenos[,trait]),]
+  
+  if(trait %in% c("logRTWT","logRTNO","logFYLD","logSHTWT")){ data1 <- data1[!is.na(data1$NOHAV),] }
+  
+  data1$CLONE          <- factor(as.character(data1$CLONE),levels=rownames(K))
+  data1$LOC.YEAR       <- factor(as.character(data1$LOC.YEAR))
+  data1$LOC.YEAR.RANGE <- factor(paste(data1$LOC.YEAR,data1$TRIAL.NAME,data1$RANGE,sep="."))
+  
+  Zg = model.matrix(~data1$CLONE-1)
+  Zr = model.matrix(~data1$LOC.YEAR.RANGE-1)
+  
+  if(trait %in% c("logRTWT","logRTNO","logFYLD","logSHTWT")){ X = model.matrix(~1+LOC.YEAR + NOHAV,data=data1) } else { X = model.matrix(~1+LOC.YEAR,data=data1) }
+  
+  y = data1[,trait]
+  funout <- emmremlMultiKernel(y=y, X=X, Z=list(Zg,Zr), K=list(K,diag(ncol(Zr))), varuhat=T,PEVuhat=T) }
+proctime<-proc.time() - proctime; proctime; save(onekernel,proctime,file="onekernel.Rdata")
+
+
+
+```
+
+
+
+
+12
+```{r}
+
+library(foreach)
+library(doParallel)
+
+load("I2_LDAK.grm")
+load("phenos.Rdata")
+
+traits <- c("logFYLD", "DM")
+K      <- I2_LDAK.grm
+
+onekernel <- foreach(a=traits, pizza=icount(), .inorder=TRUE) %dopar% { 
+  require(EMMREML); trait=traits[pizza]
+  data1 <- phenos[!is.na(phenos[,trait]),]
+  
+  if(trait %in% c("logRTWT","logRTNO","logFYLD","logSHTWT")){ data1 <- data1[!is.na(data1$NOHAV),] }
+  
+  data1$CLONE          <- factor(as.character(data1$CLONE),levels=rownames(K))
+  data1$LOC.YEAR       <- factor(as.character(data1$LOC.YEAR))
+  data1$LOC.YEAR.RANGE <- factor(paste(data1$LOC.YEAR,data1$TRIAL.NAME,data1$RANGE,sep="."))
+  
+  Zg = model.matrix(~data1$CLONE-1)
+  Zr = model.matrix(~data1$LOC.YEAR.RANGE-1)
+  
+  if(trait %in% c("logRTWT","logRTNO","logFYLD","logSHTWT")){ X = model.matrix(~1+LOC.YEAR + NOHAV,data=data1) } else { X = model.matrix(~1+LOC.YEAR,data=data1) }
+  
+  y = data1[,trait]
+  funout <- emmremlMultiKernel(y=y, X=X, Z=list(Zg,Zr), K=list(K,diag(ncol(Zr))), varbetahat=FALSE,varuhat=FALSE, PEVuhat=FALSE, test=FALSE) }
+proctime<-proc.time() - proctime; proctime; save(onekernel,proctime,file="onekernel.Rdata")
+
+
+
+
+```
+
+
+12b
+```{r}
+
+phenos <- read.delim(file = "/home/NVME/Pro-seq/Quantitative/Predictions/phenos/Phenos.GGC1",sep = "\t", header = TRUE )
+clones <- phenos$namescross
+
+Xclones <- gsub("2013_", "X2013_", clones, perl=TRUE)
+
+phenos$CLONE <- Xclones
+
+
+phenos$CLONE[37015:37026]
+save(phenos, file = "/home/NVME/Pro-seq/Quantitative/Predictions/GRMs/tmp/phenos.Rdata")
+
+
+XIDs <- gsub("2013_", "X2013_", colnames(I2_LDAK.grm), perl = TRUE)
+colnames(I2_LDAK.grm) <- XIDs
+rownames(I2_LDAK.grm) <- XIDs
+
+save(I2_LDAK.grm, file = "/home/NVME/Pro-seq/Quantitative/Predictions/GRMs/tmp/I2_LDAK.grm")
+
+```
+
+```{r}
+library(foreach)
+library(doParallel)
+
+load("III.grm")
+load("phenos.Rdata")
+
+traits <- c("DM")
+Klist  <- list(III.grm)
+K      <- III.grm
+
+desesperacion <- foreach(a=traits, pizza=icount(), .inorder=TRUE) %dopar% { 
+ 
+  require(EMMREML); trait=traits[pizza]
+  data1 <- phenos[!is.na(phenos[,trait]),]
+  
+  if(trait %in% c("logRTWT","logRTNO","logFYLD","logSHTWT")){ data1 <- data1[!is.na(data1$NOHAV),] }
+  
+  data1$CLONE          <- factor(as.character(data1$CLONE),levels=rownames(K))
+  data1$LOC.YEAR       <- factor(as.character(data1$LOC.YEAR))
+  data1$LOC.YEAR.RANGE <- factor(paste(data1$LOC.YEAR,data1$TRIAL.NAME,data1$RANGE,sep="."))
+  
+  Zg = model.matrix(~data1$CLONE-1)
+  Zr = model.matrix(~data1$LOC.YEAR.RANGE-1)
+  
+  Zlist<-list(Zg,Zr)
+  Klist<-list(Klist[[1]],diag(ncol(Zr)))
+  
+  if(trait %in% c("logRTWT","logRTNO","logFYLD","logSHTWT")){ X = model.matrix(~1+LOC.YEAR + NOHAV,data=data1) } else { X = model.matrix(~1+LOC.YEAR,data=data1) }
+  
+  y = data1[,trait]
+  funout <- emmremlMultiKernel(y=y, X=X, Z=Zlist, K=Klist) }
+proctime <- proc.time() - proctime; proctime; save(desesperacion,proctime,file="desesperacion.Rdata")
+
+
+
+```
+
+MANUAL
+
+```{r}
+library(foreach)
+library(doParallel)
+
+load("III.grm")
+load("phenos.Rdata")
+
+traits <- c("DM")
+Klist  <- list(III.grm)
+K      <- III.grm
+
+desesperacion <- foreach(a=traits, pizza=icount(), .inorder=TRUE) %dopar% { 
+ 
+  require(EMMREML); trait=traits[pizza]
+  data1 <- phenos[!is.na(phenos[,trait]),]
+  
+  if(trait %in% c("logRTWT","logRTNO","logFYLD","logSHTWT")){ data1 <- data1[!is.na(data1$NOHAV),] }
+  
+  data1$CLONE          <- factor(as.character(data1$CLONE),levels=rownames(K))
+  data1$LOC.YEAR       <- factor(as.character(data1$LOC.YEAR))
+  data1$LOC.YEAR.RANGE <- factor(paste(data1$LOC.YEAR,data1$TRIAL.NAME,data1$RANGE,sep="."))
+  
+  Zg = model.matrix(~data1$CLONE-1)
+  Zr = model.matrix(~data1$LOC.YEAR.RANGE-1)
+  
+  Zlist<-list(Zg,Zr)
+  Klist<-list(Klist[[1]],diag(ncol(Zr)))
+  
+  if(trait %in% c("logRTWT","logRTNO","logFYLD","logSHTWT")){ X = model.matrix(~1+LOC.YEAR + NOHAV,data=data1) } else { X = model.matrix(~1+LOC.YEAR,data=data1) }
+  
+  y = data1[,trait]
+  funout <- emmremlMultiKernel(y=y, X=X, Z=Zlist, K=Klist) }
+proctime <- proc.time() - proctime; proctime; save(desesperacion,proctime,file="desesperacion.Rdata")
+
+
+
+```
+
+## DENIZ FTW
+
+```{r}
+
+library(foreach)
+library(doParallel)
+
+load("/home/NVME/Pro-seq/Quantitative/Predictions/GRMs/LDAK/DREG/DREG.grm")
+load("/home/NVME/Pro-seq/Quantitative/Predictions/GRMs/LDAK/DREG/EE.grm")
+load("/home/NVME/Pro-seq/Quantitative/Predictions/GRMs/LDAK/phenos.Rdata")
+
+DREG.grm  <-  dR.grm
+
+K <- DREG.grm
+individuals<-rownames(K)
+sampleinds<-sample(individuals,400)
+sampleinds
+K<-K[rownames(K)%in%sampleinds,colnames(K)%in%sampleinds]
+
+Klist<- list(DREG.grm[rownames(DREG.grm)%in%sampleinds,colnames(DREG.grm)%in%sampleinds], EE.grm[rownames(EE.grm)%in%sampleinds,colnames(EE.grm)%in%sampleinds])
+
+#pizza=2
+#ProseqDREG <- foreach(a=traits, pizza=icount(), .inorder=TRUE) %dopar% { 
+  
+require(EMMREML) 
+trait="DM"
+data1 <- phenos[!is.na(phenos[,trait]),]
+if(trait %in% c("logRTWT","logRTNO","logFYLD","logSHTWT")){ data1 <- data1[!is.na(data1$NOHAV),] }
+data1<-data1[data1$CLONE%in%sampleinds,]
+data1$CLONE          <- factor(as.character(data1$CLONE),levels=rownames(K))
+data1$LOC.YEAR       <- factor(as.character(data1$LOC.YEAR))
+data1$LOC.YEAR.RANGE <- factor(paste(data1$LOC.YEAR,data1$TRIAL.NAME,data1$RANGE,sep="."))
+  
+Zg = model.matrix(~data1$CLONE-1)
+Zr = model.matrix(~data1$LOC.YEAR.RANGE-1)
+  
+Zlist<-list(Zg,Zr,Zg)
+Klist<-list(Klist[[2]],diag(ncol(Zr)),Klist[[1]])
+  
+if(trait %in% c("logRTWT","logRTNO","logFYLD","logSHTWT")){ X = model.matrix(~1+LOC.YEAR + NOHAV,data=data1) } else { X = model.matrix(~1+LOC.YEAR,data=data1) }
+y = data1[,trait]
+
+funout <- emmremlMultiKernel(y=y, X=X, Z=Zlist, K=Klist) 
+
+
+ids <- read.delim(file = "/home/NVME/Pro-seq/Quantitative/Predictions/LDAK/IDs", header = F, stringsAsFactors = F)
+ids <- ids[,1]
+
+dR.grm <- read.delim(file = "/home/NVME/Pro-seq/Quantitative/Predictions/LDAK/dREG.grm.raw", header = F, sep = " ")
+dR.grm <- dR.grm[,-3012]
+rownames(dR.grm) <- ids  
+colnames(dR.grm) <- ids
+dR.grm <- as.matrix(dR.grm)
+
+EE.grm <- read.delim(file = "/home/NVME/Pro-seq/Quantitative/Predictions/LDAK/not_dREG.grm.raw", header = F, sep = " ")
+EE.grm <- EE.grm[,-3012]
+rownames(EE.grm) <- ids  
+colnames(EE.grm) <- ids
+EE.grm <- as.matrix(EE.grm)
+
+
+
+
+
+gc()
+```
+
+
+```{r}
+
+
+
+load("/home/NVME/Pro-seq/Quantitative/Predictions/GRMs/LDAK/phenos.Rdata")
+
+
+IDs <- read.delim(file = "/home/NVME/Pro-seq/Quantitative/dREG/LD/dREG/IDs", header = F, stringsAsFactors = F)
+ids <- IDs[,1]
+
+DREG.grm <- read.delim(file = "/home/NVME/Pro-seq/Quantitative/dREG/LD/dREG/DREG.grm.raw", header = F, sep = " ")
+DREG.grm <- DREG.grm[,-3012]
+rownames(DREG.grm) <- ids  
+colnames(DREG.grm) <- ids
+DREG.grm <- as.matrix(DREG.grm)
+
+EE.grm <- read.delim(file = "/home/NVME/Pro-seq/Quantitative/dREG/LD/dREG/not_DREG.grm.raw", header = F, sep = " ")
+EE.grm <- EE.grm[,-3012]
+rownames(EE.grm) <- ids  
+colnames(EE.grm) <- ids
+EE.grm <- as.matrix(EE.grm)
+
+```
+
+
+```{r}
+
+K <- DREG.grm
+individuals<-rownames(K)
+Klist<- list(DREG.grm,EE.grm)
+
+sampleinds<-sample(individuals,400)
+sampleinds
+K<-K[rownames(K)%in%sampleinds,colnames(K)%in%sampleinds]
+
+Klist<- list(DREG.grm[rownames(DREG.grm)%in%sampleinds,colnames(DREG.grm)%in%sampleinds], EE.grm[rownames(EE.grm)%in%sampleinds,colnames(EE.grm)%in%sampleinds])
+
+#pizza=2
+#ProseqDREG <- foreach(a=traits, pizza=icount(), .inorder=TRUE) %dopar% { 
+  
+require(EMMREML) 
+trait="logRTWT"
+data1 <- phenos[!is.na(phenos[,trait]),]
+if(trait %in% c("logRTWT","logRTNO","logFYLD","logSHTWT")){ data1 <- data1[!is.na(data1$NOHAV),] }
+data1<-data1[data1$CLONE%in%sampleinds,]
+data1$CLONE          <- factor(as.character(data1$CLONE),levels=rownames(K))
+data1$LOC.YEAR       <- factor(as.character(data1$LOC.YEAR))
+data1$LOC.YEAR.RANGE <- factor(paste(data1$LOC.YEAR,data1$TRIAL.NAME,data1$RANGE,sep="."))
+  
+Zg = model.matrix(~data1$CLONE-1)
+Zr = model.matrix(~data1$LOC.YEAR.RANGE-1)
+  
+Zlist<-list(Zg,Zr,Zg)
+Klist<-list(Klist[[2]],diag(ncol(Zr)),Klist[[1]])
+  
+if(trait %in% c("logRTWT","logRTNO","logFYLD","logSHTWT")){ X = model.matrix(~1+LOC.YEAR + NOHAV,data=data1) } else { X = model.matrix(~1+LOC.YEAR,data=data1) }
+y = data1[,trait]
+
+funout <- emmremlMultiKernel(y=y, X=X, Z=Zlist, K=Klist) 
+
+```
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
