@@ -18,7 +18,7 @@ Given a bed file with some regions will generate relationship matrices using LDA
 
 #### Genomic_partitioning.R: 
 Will calculate Vu, Ve, and the weights for the environmental effects, focal kernel and rest of the genome kernel.
-use as: Rscript Genomic_partitioning.R <focal grm> <rest of the genome grm> <TRAIT> <output>
+use as: `Rscript Genomic_partitioning.R <focal grm> <rest of the genome grm> <TRAIT> <output>`
   
 #### phenos.Rdata: 
 Phenotypes present on the supplementary table S2
