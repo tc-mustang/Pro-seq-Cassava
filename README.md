@@ -13,15 +13,12 @@ Pipeline_cassava.sh
 
 ## Genomic Partitioning:
 
-### random.py
-
+#### random.py: 
 Given a bed file with some regions will generate relationship matrices using LDAK as described in the figure S8
 
-### Genomic_partitioning.R
-
+#### Genomic_partitioning.R: 
 Will calculate Vu, Ve, and the weights for the environmental effects, focal kernel and rest of the genome kernel.
 use as: Rscript Genomic_partitioning.R <focal grm> <rest of the genome grm> <TRAIT> <output>
   
-### phenos.Rdata
-
+#### phenos.Rdata: 
 Phenotypes present on the supplementary table S2
