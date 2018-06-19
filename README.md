@@ -16,7 +16,7 @@ Script used to proccess and align the raw sequencing libraries. See *Analysis of
 
 ## Supplementary Figures:
 
-**Supplementary_figures.Rmd:** R notebook code used to generate Fig 3 of the manuscript
+**Supplementary_figures.Rmd:** R notebook code used to generate supplementary figures 1 - 6
 
 ## Genomic Partitioning:
 
