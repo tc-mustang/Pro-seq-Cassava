@@ -1,0 +1,176 @@
+---
+title: "Figure 3"
+output: html_notebook
+---
+
+# Figure 3
+
+## Figure3a
+
+```{r, fig.height=4, fig.width=6.5}
+
+metagene            <- read.delim(file = "/home/NVME/Pro-seq/Second/Metagene/Maize/MAIZE3K.txt")
+colnames(metagene)  <- c("axis", "coverage", "Pro (+)", "Pro (-)")
+
+dim(metagene)
+metageneplot <- matrix(0, ncol = 3 , nrow = dim(metagene)[1]*2)
+metageneplot <- as.data.frame(metageneplot)
+colnames(metageneplot)    <- c("Distance from TSS (5'end)","Normalized reads", "Strand")
+
+reads    <- c(metagene$`Pro (-)`, metagene$`Pro (+)`)
+distance <- c(metagene$axis, metagene$axis) 
+strand   <- c(rep(x = "Gro(-)", dim(metagene)[1]), rep(x = "Gro(+)", dim(metagene)[1]))
+
+metageneplot[,1] <- as.integer(distance) * -1 
+metageneplot[,2] <- as.numeric(reads)
+metageneplot[,3] <- strand
+
+metageneplot[which(metageneplot$Strand=="Gro(-)"), 2]   <- metageneplot[which(metageneplot$Strand=="Gro(-)"), 2]* -1
+
+
+color <- wes_palette("IsleofDogs1")
+fill <- c(color[1], color[4])
+
+p1 <- ggplot() + geom_line(aes(y = `Normalized reads`, x =  `Distance from TSS (5'end)`, colour = Strand), size=1.3,
+                           data = metageneplot, stat="identity") +
+  theme(legend.position=c(0.83, 0.16), legend.direction="horizontal",
+        legend.title = element_blank()) +
+  labs(x="Distance from Enhancer candidates center") +
+  #ggtitle("Metaplot of nascent RNA in intergenic regions") +
+  scale_color_manual(values=fill) +
+  theme(axis.line.x = element_line(size=1, colour = "black"),
+        axis.line.y = element_line(size=1, colour = "black"),
+        panel.grid.major = element_line(colour = "#d3d3d3"), panel.grid.minor = element_blank(),
+        panel.border = element_blank(), panel.background = element_blank()) +
+  theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+        text=element_text(family="Tahoma"),
+        axis.text.x=element_text(colour="black", size = 10),
+        axis.text.y=element_text(colour="black", size = 10),
+        legend.key=element_rect(fill="white", colour="white")) +
+  scale_x_continuous(breaks =c(-2000,-1000,0,1000,2000), labels = c("-2kb", "-1kb", "0", "+1kb", "+2kb")) +
+  geom_hline(yintercept = 0)
+
+p1
+
+ggsave("/home/NVME/Fig3a.jpg", plot= p1, device = "jpg", scale = 1, width = 5, height = 4, units = c("in"),dpi = 850, limitsize = TRUE)
+
+```
+
+## Figure 3c
+
+```{r, fig.height=4, fig.width=5.5}
+
+metagene            <- read.delim(file = "/home/NVME/Maize/Combining/Enhancers_GRO.txt")
+colnames(metagene)  <- c("axis", "coverage", "Pro (+)", "Pro (-)")
+
+dim(metagene)
+metageneplot <- matrix(0, ncol = 3 , nrow = dim(metagene)[1]*2)
+metageneplot <- as.data.frame(metageneplot)
+colnames(metageneplot)    <- c("Distance from TSS (5'end)","Normalized reads", "Strand")
+
+reads    <- c(metagene$`Pro (-)`, metagene$`Pro (+)`)
+distance <- c(metagene$axis, metagene$axis) 
+strand   <- c(rep(x = "Gro(-)", dim(metagene)[1]), rep(x = "Gro(+)", dim(metagene)[1]))
+
+metageneplot[,1] <- as.integer(distance) * -1 
+metageneplot[,2] <- as.numeric(reads)
+metageneplot[,3] <- strand
+
+metageneplot[which(metageneplot$Strand=="Gro(-)"), 2]   <- metageneplot[which(metageneplot$Strand=="Gro(-)"), 2]* -1
+
+color <- wes_palette("IsleofDogs1")
+fill <- c(color[2], color[5])
+
+okaall <- ggplot() + geom_line(aes(y = `Normalized reads`, x =  `Distance from TSS (5'end)`, colour = Strand), size=1,
+                           data = metageneplot, stat="identity") +
+  theme(legend.position=c(0.83, 0.16), legend.direction="horizontal",
+        legend.title = element_blank()) +
+  labs(x="Previously identified enhancer candidates") +
+  ylab("Normalized reads") +
+  ylim(-0.04 , 0.04) +
+  #ggtitle("Oka et al. Enhancer Candidates (n = 1495)") +
+  scale_color_manual(values=fill) +
+  theme(axis.line.x = element_line(size=1, colour = "black"),
+        axis.line.y = element_line(size=1, colour = "black"),
+        panel.grid.major = element_line(colour = "#d3d3d3"), panel.grid.minor = element_blank(),
+        panel.border = element_blank(), panel.background = element_blank()) +
+  theme(plot.title = element_text(size = 12, family = "Tahoma", hjust =0.5),
+        text=element_text(family="Tahoma"),
+        axis.text.x=element_text(colour="black", size = 10),
+        axis.text.y=element_text(colour="black", size = 10),
+        legend.key=element_rect(fill="white", colour="white")) +
+  scale_x_continuous(breaks =c(-2000,-1000,0,1000,2000), labels = c("-2kb", "-1kb", "0", "+1kb", "+2kb")) +
+  geom_hline(yintercept = 0)
+
+
+ggsave("/home/NVME/Figure3C.jpg", plot= okaall, device = "jpg", scale = 1, width = 5, height = 4, units = c("in"),dpi = 850, limitsize = TRUE)
+
+okaall
+
+
+```
+
+## Figure 3e
+
+```{r, fig.height=4, fig.width=5.5}
+
+metagene            <- read.delim(file = "/home/NVME/Maize/Combining/Enhancers_519_oka.txt")
+colnames(metagene)  <- c("axis", "coverage", "Pro (+)", "Pro (-)")
+
+dim(metagene)
+metageneplot <- matrix(0, ncol = 3 , nrow = dim(metagene)[1]*2)
+metageneplot <- as.data.frame(metageneplot)
+colnames(metageneplot)    <- c("Distance from TSS (5'end)","Normalized reads", "Strand")
+
+reads    <- c(metagene$`Pro (-)`, metagene$`Pro (+)`)
+distance <- c(metagene$axis, metagene$axis) 
+strand   <- c(rep(x = "Gro(-)", dim(metagene)[1]), rep(x = "Gro(+)", dim(metagene)[1]))
+
+metageneplot[,1] <- as.integer(distance) * -1 
+metageneplot[,2] <- as.numeric(reads)
+metageneplot[,3] <- strand
+
+metageneplot[which(metageneplot$Strand=="Gro(-)"), 2]   <- metageneplot[which(metageneplot$Strand=="Gro(-)"), 2]* -1
+
+
+fill <- c(color[3], color[6])
+
+okamatch <- ggplot() + geom_line(aes(y = `Normalized reads`, x =  `Distance from TSS (5'end)`, colour = Strand), size=1,
+                           data = metageneplot, stat="identity") +
+  theme(legend.position=c(0.83, 0.16), legend.direction="horizontal",
+        legend.title = element_blank()) +
+  labs(x="Matching Enhancer candidates") +
+  #ggtitle("Matching Enhancer candidates (n = 519)") +
+  ylim(-0.04 , 0.04) +
+  scale_color_manual(values=fill) +
+  theme(axis.line.x = element_line(size=1, colour = "black"),
+        axis.line.y = element_line(size=1, colour = "black"),
+        panel.grid.major = element_line(colour = "#d3d3d3"), panel.grid.minor = element_blank(),
+        panel.border = element_blank(), panel.background = element_blank()) +
+  theme(plot.title = element_text(size = 12, family = "Tahoma", hjust =0.5),
+        text=element_text(family="Tahoma"),
+        axis.text.x=element_text(colour="black", size = 10),
+        axis.text.y=element_text(colour="black", size = 10),
+        legend.key=element_rect(fill="white", colour="white")) +
+  scale_x_continuous(breaks =c(-2000,-1000,0,1000,2000), labels = c("-2kb", "-1kb", "0", "+1kb", "+2kb")) +
+  geom_hline(yintercept = 0)
+
+ggsave("/home/NVME/Figure3E.jpg", plot= okamatch, device = "jpg", scale = 1, width = 5, height = 4, units = c("in"),dpi = 850, limitsize = TRUE)
+
+
+okamatch
+
+
+```
+
+```{r, fig.height=12, fig.width=5.5}
+
+Figure3 <- p1 + okaall+ okamatch +  plot_layout(ncol = 1)
+
+Figure3
+
+ggsave("/home/NVME/Figure3.jpg", plot= Figure3, device = "jpg", scale = 1, width = 5.5, height = 12, units = c("in"),dpi = 850, limitsize = TRUE)
+```
+
+
+

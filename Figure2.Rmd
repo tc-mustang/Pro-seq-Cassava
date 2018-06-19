@@ -1,0 +1,316 @@
+---
+title: "Figure 2"
+output: html_notebook
+---
+
+# FIGURE 2:
+
+## Figure 2a
+
+
+```{r, fig.height=4, fig.width=6}
+
+
+# Reads Mapping to the enhancer positions
+
+library(tidyr)
+library(magrittr)
+library(dplyr)
+library(ggplot2)
+library(wesanderson)
+
+
+metagene            <- read.delim(file = "/home/NVME/Pro-seq/Second/Metagene/white/NCDREG.txt")
+colnames(metagene)  <- c("axis", "coverage", "Pro (+)", "Pro (-)")
+
+dim(metagene)
+metageneplot <- matrix(0, ncol = 3 , nrow = dim(metagene)[1]*2)
+metageneplot <- as.data.frame(metageneplot)
+colnames(metageneplot)    <- c("Distance from TSS (5'end)","Normalized reads", "Strand")
+
+reads    <- c(metagene$`Pro (+)`, metagene$`Pro (-)`)
+distance <- c(metagene$axis, metagene$axis) 
+strand   <- c(rep(x = "Pro(+)", dim(metagene)[1]), rep(x = "Pro(-)", dim(metagene)[1]))
+
+metageneplot[,1] <- as.integer(distance) * -1 
+metageneplot[,2] <- as.numeric(reads)
+metageneplot[,3] <- strand
+
+metageneplot[which(metageneplot$Strand=="Pro(-)"), 2]   <- metageneplot[which(metageneplot$Strand=="Pro(-)"), 2]* -1
+
+
+color <- wes_palette("Cavalcanti1")
+fill <- c(color[2], color[1])
+
+p1 <- ggplot() + geom_line(aes(y = `Normalized reads`, x =  `Distance from TSS (5'end)`, colour = Strand), size=1.3,
+                           data = metageneplot, stat="identity") +
+  theme(legend.position=c(0.83, 0.16), legend.direction="horizontal",
+        legend.title = element_blank()) +
+  labs(x="Distance from Enhancer candidates center") +
+  #ggtitle("Metaplot of nascent RNA in intergenic regions") +
+  scale_color_manual(values=fill) +
+  theme(axis.line.x = element_line(size=1, colour = "black"),
+        axis.line.y = element_line(size=1, colour = "black"),
+        panel.grid.major = element_line(colour = "#d3d3d3"), panel.grid.minor = element_blank(),
+        panel.border = element_blank(), panel.background = element_blank()) +
+  theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+        text=element_text(family="Tahoma"),
+        axis.text.x=element_text(colour="black", size = 10),
+        axis.text.y=element_text(colour="black", size = 10),
+        legend.key=element_rect(fill="white", colour="white")) +
+  scale_x_continuous(breaks =c(-2000,-1000,0,1000,2000), labels = c("-2kb", "-1kb", "0", "+1kb", "+2kb")) +
+  geom_hline(yintercept = 0)
+
+p1
+
+ggsave("/home/NVME/Fig2alt.jpg", plot= p1, device = "jpg", scale = 1, width = 6.5, height = 4, units = c("in"),dpi = 850, limitsize = TRUE)
+
+
+```
+
+## Figure 2c.- Methylation
+
+```{r, fig.width=9, fig.height=4}
+
+library(tidyr)
+library(magrittr)
+library(dplyr)
+library(ggplot2)
+library(wesanderson)
+
+za <- read.delim("/home/NVME/Pro-seq/Second/Methylation/methylation_profiles/averages/METH_dREG_C1.txt", header = F) %>%
+  gather(quarter, methylation, 2:601) %>%
+  mutate(coordinate = rep(1:600, each=3)) %>%
+  select(-quarter) %>%
+  mutate(methylation = as.numeric(methylation)) %>%
+  rename(Type = V1)
+
+color <- wes_palette("Cavalcanti1")
+fill <- c(color[3], color[4], color[5])
+
+menhancer <-ggplot(za, aes(x=coordinate, y=methylation, group=Type)) +
+  geom_line(aes(color=Type))+
+  #stat_smooth(method = "loess", formula = y ~ x, size = 1, aes(color=Type), se = F ) +
+  scale_color_manual(values=fill) +
+   ylim(-0.001,0.027) +
+  ylab("") +
+  xlab("Enhancer candidates") +
+  theme(legend.position="bottom", legend.direction="horizontal",
+        legend.title = element_blank()) +
+  theme(axis.line.x = element_line(size=1, colour = "black"),
+        axis.line.y = element_line(size=1, colour = "black"),
+        panel.grid.major = element_line(colour = "#d3d3d3"), panel.grid.minor = element_blank(),
+        panel.border = element_blank(), panel.background = element_blank()) +
+  theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+        text=element_text(family="Tahoma"),
+        axis.text.x=element_text(colour="black", size = 10),
+        axis.text.y=element_text(colour="black", size = 10),
+        legend.key=element_rect(fill="white", colour="white")) +
+  scale_x_continuous(breaks =c(0,200,400,600), labels = c("-3kb", "0%", "100%", "+3kb"))+
+  guides(colour = guide_legend(override.aes = list(size=2)))
+
+
+
+za <- read.delim("/home/NVME/Pro-seq/Second/Methylation/methylation_profiles/averages/METH_genes.txt", header = F) %>%
+  gather(quarter, methylation, 2:601) %>%
+  mutate(coordinate = rep(1:600, each=3)) %>%
+  select(-quarter) %>%
+  mutate(methylation = as.numeric(methylation)) %>%
+  rename(Type = V1)
+
+mgenes <-ggplot(za, aes(x=coordinate, y=methylation, group=Type)) +
+  geom_line(aes(color=Type))+
+  #stat_smooth(method = "loess", formula = y ~ x, size = 1, aes(color=Type), se = F ) +
+  scale_color_manual(values=fill) +
+   ylim(-0.001,0.027) +
+  xlab("Genes") +
+  theme(legend.position="", legend.direction="horizontal",
+        legend.title = element_blank()) +
+  theme(axis.line.x = element_line(size=1, colour = "black"),
+        axis.line.y = element_line(size=1, colour = "black"),
+        panel.grid.major = element_line(colour = "#d3d3d3"), panel.grid.minor = element_blank(),
+        panel.border = element_blank(), panel.background = element_blank()) +
+  theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+        text=element_text(family="Tahoma"),
+        axis.text.x=element_text(colour="black", size = 10),
+        axis.text.y=element_text(colour="black", size = 10),
+        legend.key=element_rect(fill="white", colour="white")) +
+  scale_x_continuous(breaks =c(0,200,400,600), labels = c("-3kb", "0%", "100%", "+3kb"))
+
+
+za <- read.delim("/home/NVME/Pro-seq/Second/Methylation/methylation_profiles/averages/METH_random.txt", header = F) %>%
+  gather(quarter, methylation, 2:601) %>%
+  mutate(coordinate = rep(1:600, each=3)) %>%
+  select(-quarter) %>%
+  mutate(methylation = as.numeric(methylation)) %>%
+  rename(Type = V1)
+
+
+mrandom<-ggplot(za, aes(x=coordinate, y=methylation, group=Type)) +
+  geom_line(aes(color=Type))+
+  #stat_smooth(method = "loess", formula = y ~ x, size = 1, aes(color=Type), se = F ) +
+  scale_color_manual(values=fill) +
+   ylim(-0.001,0.027) +
+  ylab("") +
+  xlab("Random sequences") +
+  theme(legend.position="", legend.direction="horizontal",
+        legend.title = element_blank()) +
+  theme(axis.line.x = element_line(size=1, colour = "black"),
+        axis.line.y = element_line(size=1, colour = "black"),
+        panel.grid.major = element_line(colour = "#d3d3d3"), panel.grid.minor = element_blank(),
+        panel.border = element_blank(), panel.background = element_blank()) +
+  theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+        text=element_text(family="Tahoma"),
+        axis.text.x=element_text(colour="black", size = 10),
+        axis.text.y=element_text(colour="black", size = 10),
+        legend.key=element_rect(fill="white", colour="white")) +
+  scale_x_continuous(breaks =c(0,200,400,600), labels = c("-3kb", "0%", "100%", "+3kb")) 
+
+
+
+methylation <- mgenes + menhancer+ mrandom
+
+methylation
+
+ggsave("/home/NVME/plot3", plot= methylation, device = "jpg", scale = 1, width = 10.5, height = 4, units = c("in"),dpi = 850, limitsize = TRUE)
+
+
+```
+
+## Figure 2d and 2e GERP/conservation
+
+```{r, fig.height=4, fig.width=8.5 }
+
+library(tidyr)
+library(magrittr)
+library(dplyr)
+library(ggplot2)
+library(wesanderson)
+
+za <- read.delim("/home/NVME/Pro-seq/Second/Methylation/GERP/results/averages/this", header = F)
+zb <- read.delim("/home/NVME/Pro-seq/Second/Methylation/GERP/results/averages/this2", header = F) 
+zc <- read.delim("/home/NVME/Pro-seq/Second/Methylation/GERP/results/averages/this3", header = F)
+
+ZR      <- rbind(za[3,], zb[3,], zc[3,])
+ZR[,1]  <- c("dREG", "Genes", "random" ) 
+
+ZR <- ZR %>%
+  gather(quarter, methylation, 2:601) %>%
+  mutate(coordinate = rep(1:600, each=3)) %>%
+  select(-quarter) %>%
+  mutate(methylation = as.numeric(methylation)) %>%
+  rename(Type = V1)
+  
+
+color <- wes_palette("Cavalcanti1")
+fill <- c(color[1], color[2], color[3])
+
+GERPplot<-ggplot(ZR, aes(x=coordinate, y=methylation, group=Type)) +
+  geom_line(aes(color=Type), size =1.1)+
+  #stat_smooth(method = "loess", formula = y ~ x, size = 1, aes(color=Type), se = F ) +
+  scale_color_manual(values=fill) +
+  ylab("GERP scores") +
+  ylim(-0.001,1.027) +
+  theme(legend.text=element_text(size=15)) +
+  theme(legend.position="bottom", legend.direction="horizontal",
+        legend.title = element_blank()) +
+  theme(axis.line.x = element_line(size=1, colour = "black"),
+        axis.line.y = element_line(size=1, colour = "black"),
+        panel.grid.major = element_line(colour = "#d3d3d3"), panel.grid.minor = element_blank(),
+        panel.border = element_blank(), panel.background = element_blank()) +
+  theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+        text=element_text(family="Tahoma"),
+        axis.text.x=element_text(colour="black", size = 10),
+        axis.text.y=element_text(colour="black", size = 10),
+        legend.key=element_rect(fill="white", colour="white")) +
+  scale_x_continuous(breaks =c(0,200,400,600), labels = c("-3kb", "0%", "100%", "+3kb"))
+
+
+za <- read.delim("/home/NVME/Pro-seq/Second/Methylation/GERP/TREE/averages/this", header = F)
+zb <- read.delim("/home/NVME/Pro-seq/Second/Methylation/GERP/TREE/averages/this2", header = F) 
+zc <- read.delim("/home/NVME/Pro-seq/Second/Methylation/GERP/TREE/averages/this3", header = F)
+
+ZR      <- rbind(za[3,], zb[3,], zc[3,])
+ZR[,1]  <- c("dREG", "Genes", "random" ) 
+
+ZR <- ZR %>%
+  gather(quarter, methylation, 2:601) %>%
+  mutate(coordinate = rep(1:600, each=3)) %>%
+  select(-quarter) %>%
+  mutate(methylation = as.numeric(methylation)) %>%
+  rename(Type = V1)
+  
+
+TREEplot<-ggplot(ZR, aes(x=coordinate, y=methylation, group=Type)) +
+  geom_line(aes(color=Type), size =1.1)+
+  #stat_smooth(method = "loess", formula = y ~ x, size = 1, aes(color=Type), se = F ) +
+  scale_color_manual(values=fill) +
+  ylab("TREE length") +
+  ylim(0.24,2) +
+  theme(legend.text=element_text(size=15)) +
+  theme(legend.position="bottom", legend.direction="horizontal",
+        legend.title = element_blank()) +
+  theme(axis.line.x = element_line(size=1, colour = "black"),
+        axis.line.y = element_line(size=1, colour = "black"),
+        panel.grid.major = element_line(colour = "#d3d3d3"), panel.grid.minor = element_blank(),
+        panel.border = element_blank(), panel.background = element_blank()) +
+  theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+        text=element_text(family="Tahoma"),
+        axis.text.x=element_text(colour="black", size = 10),
+        axis.text.y=element_text(colour="black", size = 10),
+        legend.key=element_rect(fill="white", colour="white")) +
+  scale_x_continuous(breaks =c(0,200,400,600), labels = c("-3kb", "0%", "100%", "+3kb"))
+
+
+dande <- GERPplot + TREEplot 
+dande
+
+
+
+
+```
+
+
+## Figure 2f.- Genomic Partitioning Plot
+
+```{r, fig.height=4, fig.width=10.5}
+
+DM <- read.delim("/home/NVME/Pro-seq/Quantitative/CBSU/Results/tmp2", header = F)
+colnames(DM) <- c("TRAIT", "Exp", "Value")
+
+#Filter RTWT it is almost the same as FYLD
+DM <- DM %>%
+  filter(TRAIT != "RTWT")
+table(DM$TRAIT)
+
+color <- wes_palette("Cavalcanti1")
+
+library(ggplot2)
+partitioning<-ggplot(DM, aes(x=TRAIT, y=Value, fill=Exp)) + 
+  geom_dotplot(binaxis='y', stackdir='center', dotsize = 1, alpha =0.8, binwidth = 0.009) +
+  scale_fill_manual(values=c(color[2], color[1])) +
+  theme(legend.text=element_text(size=15)) +
+  theme(legend.position="bottom", legend.direction="horizontal",
+        legend.title = element_blank()) +
+  theme(axis.line.x = element_line(size=1, colour = "black"),
+        axis.line.y = element_line(size=1, colour = "black"),
+        panel.grid.major = element_line(colour = "#d3d3d3"), panel.grid.minor = element_blank(),
+        panel.border = element_blank(), panel.background = element_blank()) +
+  theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+        text=element_text(family="Tahoma"),
+        axis.text.x=element_text(colour="black", size = 10),
+        axis.text.y=element_text(colour="black", size = 10),
+        legend.key=element_rect(fill="white", colour="white")) +
+  labs(x = "Cassava Traits", y =" % of phenotypic variance") #+
+  #theme(legend.position=c(0.75,0.09))
+
+
+plot2 <- GERPplot + TREEplot + partitioning
+plot2
+
+
+ggsave("/home/NVME/figure2line.jpg", plot= plot2, device = "jpg", scale = 1, width = 10.5, height = 4, units = c("in"),dpi = 850, limitsize = TRUE)
+
+
+
+```

@@ -1,0 +1,276 @@
+---
+title: "Plant Enhancers Figure 1"
+output: html_notebook
+---
+
+# Figure 1.- Accumulation of Pro-seq reads around the Transcription Start Site and the Polyadenylation sites of three different plant species
+
+```{r, fig.width=7, fig.height=6}
+
+library(ggthemes)
+library(extrafont)
+library(ggplot2)
+library(wesanderson)
+library(patchwork)
+
+
+####################################################### CASSAVA ######################################################################
+
+#### TSS
+
+fill <- wes_palette("Cavalcanti1")
+
+metagene            <- read.delim(file = "/home/NVME/Pro-seq/Second/Metagene/metagene.txt")
+colnames(metagene)  <- c("axis", "coverage", "Pro (+)", "Pro (-)")
+
+dim(metagene)
+metageneplot <- matrix(0, ncol = 3 , nrow = dim(metagene)[1]*2)
+metageneplot <- as.data.frame(metageneplot)
+colnames(metageneplot)    <- c("Distance from TSS (5'end)","Normalized reads", "Strand")
+
+reads    <- c(metagene$`Pro (+)`, metagene$`Pro (-)`)
+distance <- c(metagene$axis, metagene$axis) 
+strand   <- c(rep(x = "Pro(+)", dim(metagene)[1]), rep(x = "Pro(-)", dim(metagene)[1]))
+
+metageneplot[,1] <- as.integer(distance) * -1 
+metageneplot[,2] <- as.numeric(reads) 
+metageneplot[,3] <- strand
+
+metageneplot[which(metageneplot$Strand=="Pro(-)"), 2]   <- metageneplot[which(metageneplot$Strand=="Pro(-)"), 2]* -1
+
+
+TSS.cassava <- ggplot() + geom_line(aes(y = `Normalized reads`, x =  `Distance from TSS (5'end)`, colour = Strand), size=1,
+                           data = metageneplot, stat="identity") +
+  theme(legend.position="bottom", legend.direction="horizontal",
+        legend.title = element_blank()) +
+  #ggtitle("Metagene Plot Cassava Pro-seq read") +
+  ylab("") +
+  xlim(-1000, 1000) +
+  scale_color_manual(values=c(fill[2], fill[1])) +
+  theme(axis.line.x = element_line(size=1, colour = "black"),
+        axis.line.y = element_line(size=1, colour = "black"),
+        panel.grid.major = element_line(colour = "#d3d3d3"), panel.grid.minor = element_blank(),
+        panel.border = element_blank(), panel.background = element_blank()) +
+  theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+        text=element_text(family="Tahoma"),
+        axis.text.x=element_text(colour="black", size = 10),
+        axis.text.y=element_text(colour="black", size = 10),
+        legend.key=element_rect(fill="white", colour="white"))
+
+
+#### PAS
+
+metagene            <- read.delim(file = "/home/NVME/Pro-seq/Second/Metagene/metagene_long__TTS.txt")
+colnames(metagene)  <- c("axis", "coverage", "Pro (+)", "Pro (-)")
+
+dim(metagene)
+metageneplot <- matrix(0, ncol = 3 , nrow = dim(metagene)[1]*2)
+metageneplot <- as.data.frame(metageneplot)
+colnames(metageneplot)    <- c("Distance from PAS (3'end)","Normalized reads", "Strand")
+
+reads    <- c(metagene$`Pro (+)`, metagene$`Pro (-)`)
+distance <- c(metagene$axis, metagene$axis) 
+strand   <- c(rep(x = "Pro(+)", dim(metagene)[1]), rep(x = "Pro(-)", dim(metagene)[1]))
+
+metageneplot[,1] <- as.integer(distance) * -1 
+metageneplot[,2] <- as.numeric(reads)
+metageneplot[,3] <- strand
+
+metageneplot[which(metageneplot$Strand=="Pro(-)"), 2]   <- metageneplot[which(metageneplot$Strand=="Pro(-)"), 2]* -1
+
+delete        <- which(metageneplot[,1] < -1500)
+metageneplot  <- metageneplot[-delete,]
+
+PAS.cassava <- ggplot() + geom_line(aes(y = `Normalized reads`, x =  `Distance from PAS (3'end)`, colour = Strand), size=1,
+                           data = metageneplot, stat="identity") +
+  theme(legend.position="bottom", legend.direction="horizontal",
+        legend.title = element_blank()) +
+  ylab("") +
+  #ylim(0,0.15) +
+  xlim(-1000, 1500) +
+  #ggtitle("Metagene Plot Cassava Pro-seq read") +
+  scale_color_manual(values=c(fill[2], fill[1])) +
+  theme(axis.line.x = element_line(size=1, colour = "black"),
+        axis.line.y = element_line(size=1, colour = "black"),
+        panel.grid.major = element_line(colour = "#d3d3d3"), panel.grid.minor = element_blank(),
+        panel.border = element_blank(), panel.background = element_blank()) +
+  theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+        text=element_text(family="Tahoma"),
+        axis.text.x=element_text(colour="black", size = 10),
+        axis.text.y=element_text(colour="black", size = 10),
+        legend.key=element_rect(fill="white", colour="white"))
+
+
+####################################################### MAIZE Bo ######################################################################
+
+#### TSS
+
+fill <- wes_palette("Cavalcanti1")
+
+metagene            <- read.delim(file = "/home/NVME/Maize/Bo/metaplot/Bo_maize_TSS")
+colnames(metagene)  <- c("axis", "coverage", "Pro (+)", "Pro (-)")
+
+dim(metagene)
+metageneplot <- matrix(0, ncol = 3 , nrow = dim(metagene)[1]*2)
+metageneplot <- as.data.frame(metageneplot)
+colnames(metageneplot)    <- c("Distance from TSS (5'end)","Normalized reads", "Strand")
+
+reads    <- c(metagene$`Pro (+)`, metagene$`Pro (-)`)
+distance <- c(metagene$axis, metagene$axis) 
+strand   <- c(rep(x = "Pro(+)", dim(metagene)[1]), rep(x = "Pro(-)", dim(metagene)[1]))
+
+metageneplot[,1] <- as.integer(distance) * -1 
+metageneplot[,2] <- as.numeric(reads)
+metageneplot[,3] <- strand
+
+metageneplot[which(metageneplot$Strand=="Pro(+)"), 2]   <- metageneplot[which(metageneplot$Strand=="Pro(+)"), 2]* -1
+
+TSS.maize <- ggplot() + geom_line(aes(y = `Normalized reads`, x =  `Distance from TSS (5'end)`, colour = Strand), size=1,
+                           data = metageneplot, stat="identity") +
+  theme(legend.position="none", legend.direction="horizontal",
+        legend.title = element_blank()) +
+  xlab("") +
+  xlim(-1000, 1000) +
+  #ggtitle("Metagene Plot Cassava Pro-seq read") +
+  scale_color_manual(values=c(fill[1], fill[2])) +
+  theme(axis.line.x = element_line(size=1, colour = "black"),
+        axis.line.y = element_line(size=1, colour = "black"),
+        panel.grid.major = element_line(colour = "#d3d3d3"), panel.grid.minor = element_blank(),
+        panel.border = element_blank(), panel.background = element_blank()) +
+  theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+        text=element_text(family="Tahoma"),
+        axis.text.x=element_text(colour="black", size = 10),
+        axis.text.y=element_text(colour="black", size = 10),
+        legend.key=element_rect(fill="white", colour="white"))
+
+
+#### PAS
+
+metagene            <- read.delim(file = "/home/NVME/Maize/Bo/metaplot/Maize_pas.txt")
+colnames(metagene)  <- c("axis", "coverage", "Pro (+)", "Pro (-)")
+
+dim(metagene)
+metageneplot <- matrix(0, ncol = 3 , nrow = dim(metagene)[1]*2)
+metageneplot <- as.data.frame(metageneplot)
+colnames(metageneplot)    <- c("Distance from PAS (3'end)","Normalized reads", "Strand")
+
+reads    <- c(metagene$`Pro (+)`, metagene$`Pro (-)`)
+distance <- c(metagene$axis, metagene$axis) 
+strand   <- c(rep(x = "Pro(+)", dim(metagene)[1]), rep(x = "Pro(-)", dim(metagene)[1]))
+
+metageneplot[,1] <- as.integer(distance) * 1 
+metageneplot[,2] <- as.numeric(reads)
+metageneplot[,3] <- strand
+
+metageneplot[which(metageneplot$Strand=="Pro(-)"), 2]   <- metageneplot[which(metageneplot$Strand=="Pro(-)"), 2]* -1
+
+PAS.maize <- ggplot() + geom_line(aes(y = `Normalized reads`, x =  `Distance from PAS (3'end)`, colour = Strand), size=1,
+                           data = metageneplot, stat="identity") +
+  ylab("") +
+  xlab("") +
+  #ylim(0,0.117) +
+  xlim(-1000, 1500) +
+  theme(legend.position="none", legend.direction="horizontal",
+        legend.title = element_blank()) +
+  scale_color_manual(values=c(fill[2], fill[1])) +
+  theme(axis.line.x = element_line(size=1, colour = "black"),
+        axis.line.y = element_line(size=1, colour = "black"),
+        panel.grid.major = element_line(colour = "#d3d3d3"), panel.grid.minor = element_blank(),
+        panel.border = element_blank(), panel.background = element_blank()) +
+  theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+        text=element_text(family="Tahoma"),
+        axis.text.x=element_text(colour="black", size = 10),
+        axis.text.y=element_text(colour="black", size = 10),
+        legend.key=element_rect(fill="white", colour="white"))
+
+
+
+
+
+####################################################### Arabidopsis GroSeq ######################################################################
+
+
+#### TSS
+metagene            <- read.delim(file = "/home/DB/proseq/Arabidopsis/metagene/TSS.arabidopsis.results")
+colnames(metagene)  <- c("axis", "coverage", "Pro (+)", "Pro (-)")
+
+dim(metagene)
+metageneplot <- matrix(0, ncol = 3 , nrow = dim(metagene)[1]*2)
+metageneplot <- as.data.frame(metageneplot)
+colnames(metageneplot)    <- c("Distance from TSS (5'end)","Normalized reads", "Strand")
+
+reads    <- c(metagene$`Pro (+)`, metagene$`Pro (-)`)
+distance <- c(metagene$axis, metagene$axis) 
+strand   <- c(rep(x = "Pro/Gro(+)", dim(metagene)[1]), rep(x = "Pro/Gro(-)", dim(metagene)[1]))
+
+metageneplot[,1] <- as.integer(distance) * 1 
+metageneplot[,2] <- as.numeric(reads)
+metageneplot[,3] <- strand
+
+metageneplot[which(metageneplot$Strand=="Pro(+)"), 2]   <- metageneplot[which(metageneplot$Strand=="Pro(+)"), 2]* -1
+
+TSS.Ara.Gro <- ggplot() + geom_line(aes(y = `Normalized reads`, x =  `Distance from TSS (5'end)`, colour = Strand), size=1,
+                           data = metageneplot, stat="identity") +
+  theme(legend.position="none", legend.direction="horizontal",
+        legend.title = element_blank()) +
+  xlim(-1000, 1000) +
+  ylab("") +
+  xlab("") +
+  scale_color_manual(values=c(fill[1], fill[2])) +
+  theme(axis.line.x = element_line(size=1, colour = "black"),
+        axis.line.y = element_line(size=1, colour = "black"),
+        panel.grid.major = element_line(colour = "#d3d3d3"), panel.grid.minor = element_blank(),
+        panel.border = element_blank(), panel.background = element_blank()) +
+  theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+        text=element_text(family="Tahoma"),
+        axis.text.x=element_text(colour="black", size = 10),
+        axis.text.y=element_text(colour="black", size = 10),
+        legend.key=element_rect(fill="white", colour="white"))
+
+#### PAS
+metagene            <- read.delim(file = "/home/DB/proseq/Arabidopsis/metagene/Ara_tts.txt")
+colnames(metagene)  <- c("axis", "coverage", "Pro (+)", "Pro (-)")
+
+dim(metagene)
+metageneplot <- matrix(0, ncol = 3 , nrow = dim(metagene)[1]*2)
+metageneplot <- as.data.frame(metageneplot)
+colnames(metageneplot)    <- c("Distance from PAS (3'end)","Normalized reads", "Strand")
+
+reads    <- c(metagene$`Pro (+)`, metagene$`Pro (-)`)
+distance <- c(metagene$axis, metagene$axis) 
+strand   <- c(rep(x = "Pro(+)", dim(metagene)[1]), rep(x = "Pro(-)", dim(metagene)[1]))
+
+metageneplot[,1] <- as.integer(distance) * 1 
+metageneplot[,2] <- as.numeric(reads)
+metageneplot[,3] <- strand
+
+metageneplot[which(metageneplot$Strand=="Pro(+)"), 2]   <- metageneplot[which(metageneplot$Strand=="Pro(+)"), 2]* -1
+
+PAS.Ara.Gro <- ggplot() + geom_line(aes(y = `Normalized reads`, x =  `Distance from PAS (3'end)`, colour = Strand), size=1,
+                           data = metageneplot, stat="identity") +
+  theme(legend.position="none", legend.direction="horizontal",
+        legend.title = element_blank()) +
+  #ggtitle("Metagene Plot Cassava Pro-seq read") +
+  xlim(-1000, 1500) +
+  #ylim(0,0.1) +
+  ylab("") +
+  xlab("") +
+  scale_color_manual(values=c(fill[1], fill[2])) +
+  theme(axis.line.x = element_line(size=1, colour = "black"),
+        axis.line.y = element_line(size=1, colour = "black"),
+        panel.grid.major = element_line(colour = "#d3d3d3"), panel.grid.minor = element_blank(),
+        panel.border = element_blank(), panel.background = element_blank()) +
+  theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+        text=element_text(family="Tahoma"),
+        axis.text.x=element_text(colour="black", size = 10),
+        axis.text.y=element_text(colour="black", size = 10),
+        legend.key=element_rect(fill="white", colour="white"))
+
+
+Graph <- TSS.Ara.Gro + PAS.Ara.Gro  + TSS.maize + PAS.maize +  TSS.cassava + PAS.cassava + plot_layout(ncol = 2)
+Graph
+ggsave("/home/NVME/test.jpg", plot= Graph, device = "jpg", scale = 1, width = 7, height = 6, units = c("in"),dpi = 850, limitsize = TRUE)
+
+```
+
+
