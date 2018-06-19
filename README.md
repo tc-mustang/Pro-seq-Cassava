@@ -8,14 +8,15 @@ Script used to proccess and align the raw sequencing libraries. See *Analysis of
 
 ## Main text Figures:
 
-** Figure1.Rmd: ** R notebook code used to generate Fig 1 of the manuscript
+**Figure1.Rmd:** R notebook code used to generate Fig 1 of the manuscript
 
-** Figure2.Rmd: ** R notebook code used to generate Fig 2 of the manuscript
+**Figure2.Rmd:** R notebook code used to generate Fig 2 of the manuscript
 
-** Figure3.Rmd: ** R notebook code used to generate Fig 3 of the manuscript
+**Figure3.Rmd:** R notebook code used to generate Fig 3 of the manuscript
 
 ## Supplementary Figures:
 
+**Supplementary_figures.Rmd:** R notebook code used to generate Fig 3 of the manuscript
 
 ## Genomic Partitioning:
 
